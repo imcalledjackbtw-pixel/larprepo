@@ -1,0 +1,45 @@
+name: Build larpxodus iOS
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+
+    steps:
+      - name: Download repository
+        uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Build iOS app
+        run: |
+          xcodebuild \
+            -project larpxodus.xcodeproj \
+            -scheme "larpxodus iOS" \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination "generic/platform=iOS" \
+            -archivePath "$PWD/build/larpxodus.xcarchive" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            archive
+
+      - name: Create unsigned IPA
+        run: |
+          mkdir -p build/Payload
+
+          APP_PATH=$(find build/larpxodus.xcarchive/Products/Applications -name "*.app" -maxdepth 1 | head -n 1)
+
+          cp -R "$APP_PATH" build/Payload/
+
+          cd build
+          zip -r larpxodus-unsigned.ipa Payload
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: larpxodus-unsigned
+          path: build/larpxodus-unsigned.ipa
